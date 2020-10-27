@@ -1,3 +1,5 @@
+import os
+import re
 from typing import Optional, Union
 
 def _parse_number(value: str, type_cls) -> int:
@@ -62,3 +64,25 @@ def contains_characters(string: str, characters: str) -> bool:
         if char in string:
             return True
     return False
+
+
+def list_patterns(path, pattern):
+    """
+    list files with name matches the pattern under the given path,
+    if nothing found or the path not exists, return empty list []
+
+    Caution: we do not care if the found is regular or directory
+    :param path:
+    :param pattern:
+    :return:
+    """
+    if not os.path.exists(path):
+        return []
+    if not os.path.isdir(path):
+        return []
+
+    filenames = []
+    for filename in os.listdir(path):
+        if re.match(pattern, filename):
+            filenames.append(filename)
+    return filenames

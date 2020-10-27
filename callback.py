@@ -235,5 +235,35 @@ def make_linearfits(shell, platform, parser, *args, **kwargs):
         platform.writer("Making lab linearfit: %s\n" % filename)
         #shutil.copy(filename, dest)
 
-def make_derivative():
-    print("make derivative")
+def make_derivative(shell, platform, parser, *args, **kwargs):
+    """
+    create derivative by files present
+    :param shell:
+    :param platform:
+    :param parser:
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    print("args: %s" % repr(args))
+    print("kwargs: %s" % repr(kwargs))
+
+    path = os.path.join(shell.root, shell.config['lab'])
+    if not os.path.exists(path):
+        platform.writer("%s: directory not exists\n" % path, "error")
+        return
+
+    pres_serial = []
+    flow_serial = []
+    lfit_serial = []
+    pres_files = []
+    flow_files = []
+    lfit_files = []
+
+    pres_pattern = r'^(?P<number>\d{4,5})[.]pCal$'
+    flow_pattern = r'^(?P<number>\d{4,5})[.]fCal$'
+    lfit_pattern = r'^ZCF-301B\s+ST\d{4,5}\w{4,}-?\w{0,3}[.]xls$'
+
+    for filename in os.listdir(path):
+        if re.match(pres_pattern, filename):
+
