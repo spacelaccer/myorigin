@@ -253,17 +253,30 @@ def make_derivative(shell, platform, parser, *args, **kwargs):
         platform.writer("%s: directory not exists\n" % path, "error")
         return
 
-    pres_serial = []
-    flow_serial = []
-    lfit_serial = []
-    pres_files = []
-    flow_files = []
-    lfit_files = []
+    pres_calibrates = []
+    flow_calibrates = []
+    flow_linearfits = []
+    file_derivative = []
 
     pres_pattern = r'^(?P<number>\d{4,5})[.]pCal$'
     flow_pattern = r'^(?P<number>\d{4,5})[.]fCal$'
     lfit_pattern = r'^ZCF-301B\s+ST\d{4,5}\w{4,}-?\w{0,3}[.]xls$'
+    derv_pattern = r'ZCF-301B\s+ST\d{3,5}\(\d{4}[.]\d{2}[.]\d{2}\)-?\w{0,3}$'
 
     for filename in os.listdir(path):
-        if re.match(pres_pattern, filename):
-
+        if filename.endswith("Cal"):
+            if re.match(pres_pattern, filename):  # pressure calibrates
+                pres_calibrates.append(filename)
+            elif re.match(flow_pattern, filename): # flow calibrates
+                flow_calibrates.append(filename)
+            else:
+                continue
+        elif filename.startswith("ZCF-301B"):
+            if re.match(lfit_pattern, filename):  # linearfits
+                flow_linearfits.append(filename)
+            elif re.match(derv_pattern, filename):  # derivative
+                file_derivative.append(filename)
+            else:
+                continue
+        else:
+            continue
