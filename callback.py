@@ -237,7 +237,19 @@ def make_linearfits(shell, platform, parser, *args, **kwargs):
 
 def make_derivative(shell, platform, parser, *args, **kwargs):
     """
-    create derivative by files present
+    make final derivative files, namely (pCal, fCal, xls) package.
+    If no arg given, we just package all the needed files under the
+    'lab' path; if args given, first we check all the needed files
+    under 'lab' path, if they all exist, we just directly package
+    them together, if some files missing, then we retract them from
+    the given 'src' path or the default 'src' path.
+
+    'src':  path from which we retract needed files;
+    'dest': path to which we move the final packages;
+    'prefix': prefix pattern that will be prepended to the given serial numbers
+    'suffix': suffix pattern that will be appended to the given serial numbers
+    'regexp': serial numbers that match this regular expression
+
     :param shell:
     :param platform:
     :param parser:
@@ -248,10 +260,31 @@ def make_derivative(shell, platform, parser, *args, **kwargs):
     print("args: %s" % repr(args))
     print("kwargs: %s" % repr(kwargs))
 
-    path = os.path.join(shell.root, shell.config['lab'])
-    if not os.path.exists(path):
-        platform.writer("%s: directory not exists\n" % path, "error")
-        return
+    if 'src' in kwargs:
+        src = kwargs['src']
+    else:
+        src = shell.config['sources'][0]
+    if not os.path.exists(src):
+        platform.writer("%s: path not exists\n" % src)
+    else:
+        platform.writer("src: %s\n" % src)
+
+    if 'dest' in kwargs:
+        dest = kwargs['dest']
+    else:
+        dest = os.path.join(shell.root, shell.config['lab'])
+    if not os.path.exists(dest):
+        platform.writer("%s: path not exists\n" % dest)
+    else:
+        platform.writer("dest: %s\n" % dest)
+
+    if args:
+        platform.writer("Making derivatives:")
+        for arg in args:
+            platform.writer(" %s" % arg)
+        platform.writer("\n")
+    else:
+        platform.writer("Making default derivatives\n")
 
     pres_calibrates = []
     flow_calibrates = []
@@ -263,20 +296,14 @@ def make_derivative(shell, platform, parser, *args, **kwargs):
     lfit_pattern = r'^ZCF-301B\s+ST\d{4,5}\w{4,}-?\w{0,3}[.]xls$'
     derv_pattern = r'ZCF-301B\s+ST\d{3,5}\(\d{4}[.]\d{2}[.]\d{2}\)-?\w{0,3}$'
 
-    for filename in os.listdir(path):
-        if filename.endswith("Cal"):
-            if re.match(pres_pattern, filename):  # pressure calibrates
-                pres_calibrates.append(filename)
-            elif re.match(flow_pattern, filename): # flow calibrates
-                flow_calibrates.append(filename)
-            else:
-                continue
-        elif filename.startswith("ZCF-301B"):
-            if re.match(lfit_pattern, filename):  # linearfits
-                flow_linearfits.append(filename)
-            elif re.match(derv_pattern, filename):  # derivative
-                file_derivative.append(filename)
-            else:
-                continue
+    for filename in os.listdir(dest):
+        if re.match(pres_pattern, filename):
+            pres_calibrates.append(filename)
+        elif re.match(flow_pattern, filename):
+            flow_calibrates.append(filename)
+        elif re.match(lfit_pattern, filename):
+            flow_linearfits.append(filename)
+        elif re.match(derv_pattern, filename):
+            file_derivative.append(filename)
         else:
             continue
