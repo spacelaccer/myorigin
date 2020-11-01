@@ -243,10 +243,49 @@ def make_derivative(shell, platform, parser, *args, **kwargs):
     directory packages under the @derivative directory in the root path.
 
     the args could contain some regular expression patterns for speed up work.
-    For example, 206*, 20670-20678 , 20720+ etc.
+    For example, 20670-20678, 206*, 20720+ etc.
     """
     platform.writer("args: %s\n" % repr(args))
     platform.writer("kwargs: %s\n" % repr(kwargs))
+
+    # We got no serial number, just do nothing
+    if not args:
+        platform.writer("No serial numbers given, nothing done\n")
+        return
+
+    serial_numbers = []
+    for arg in args:
+        if re.match(r'^\d{2,5}$', arg):
+            serial_numbers.append(arg)
+        elif re.match(r'\d{2,5}[-~_]\d{2,5}', arg):
+            print("we have a match: %s\n" % arg)
+            references = re.split(r'[-~_]', arg)
+            start = min(int(references[0]), int(references[1]))
+            final = max(int(references[0]), int(references[1]))
+            for number in range(start, final+1):
+                serial_numbers.append(str(number))
+
+    print(serial_numbers)
+
+    # dict to save useful information
+    # {'serial': {'pres': 'xxx', 'flow': 'xxx', 'lfit': 'xxx', 'derv': 'xxxx'}
+    derivatives = {}
+    pres_calibrates = []
+    flow_calibrates = []
+    lfit_linearfits = []
+    for serial in serial_numbers:
+        derivatives.update({serial: {}})
+        pres = serial + '.pCal'
+        flow = serial + '.fCal'
+        lfit = serial + '.xls'
+        if pres in pres_calibrates:
+            derivatives[serial].update({'pres': pres})
+        if flow in flow_calibrates:
+            derivatives[serial].update({'flow': flow})
+        if lfit in lfit_linearfits:
+            derivatives[serial].update({'lfit': lfit})
+
+
 
     # filename and attributes collections
     pres_calibrates = {}

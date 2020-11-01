@@ -204,7 +204,6 @@ class CommandElement(Element):
             self.callback_kwargs.update({attr: value})
 
     def parse_parse(self, shell, platform, parser):
-        print("command process result: \n")
         self.callback(shell, platform, parser, *tuple(self.callback_args), **self.callback_kwargs)
 
     def parse_clear(self):
