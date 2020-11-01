@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import datetime
 
 
 def list_source(shell, platform, parser, *args, **kwargs):
@@ -237,73 +238,76 @@ def make_linearfits(shell, platform, parser, *args, **kwargs):
 
 def make_derivative(shell, platform, parser, *args, **kwargs):
     """
-    make final derivative files, namely (pCal, fCal, xls) package.
-    If no arg given, we just package all the needed files under the
-    'lab' path; if args given, first we check all the needed files
-    under 'lab' path, if they all exist, we just directly package
-    them together, if some files missing, then we retract them from
-    the given 'src' path or the default 'src' path.
+    Based on the given serial number args, retrieve related calibrates and linearfits
+    form @calibrates and @linearfits directories in the root path. And create the final
+    directory packages under the @derivative directory in the root path.
 
-    'src':  path from which we retract needed files;
-    'dest': path to which we move the final packages;
-    'prefix': prefix pattern that will be prepended to the given serial numbers
-    'suffix': suffix pattern that will be appended to the given serial numbers
-    'regexp': serial numbers that match this regular expression
-
-    :param shell:
-    :param platform:
-    :param parser:
-    :param args:
-    :param kwargs:
-    :return:
+    the args could contain some regular expression patterns for speed up work.
+    For example, 206*, 20670-20678 , 20720+ etc.
     """
-    print("args: %s" % repr(args))
-    print("kwargs: %s" % repr(kwargs))
+    platform.writer("args: %s\n" % repr(args))
+    platform.writer("kwargs: %s\n" % repr(kwargs))
 
-    if 'src' in kwargs:
-        src = kwargs['src']
-    else:
-        src = shell.config['sources'][0]
-    if not os.path.exists(src):
-        platform.writer("%s: path not exists\n" % src)
-    else:
-        platform.writer("src: %s\n" % src)
+    # filename and attributes collections
+    pres_calibrates = {}
+    flow_calibrates = {}
+    lfit_linearfits = {}
+    file_derivative = {}
 
-    if 'dest' in kwargs:
-        dest = kwargs['dest']
-    else:
-        dest = os.path.join(shell.root, shell.config['lab'])
-    if not os.path.exists(dest):
-        platform.writer("%s: path not exists\n" % dest)
-    else:
-        platform.writer("dest: %s\n" % dest)
-
-    if args:
-        platform.writer("Making derivatives:")
-        for arg in args:
-            platform.writer(" %s" % arg)
-        platform.writer("\n")
-    else:
-        platform.writer("Making default derivatives\n")
-
-    pres_calibrates = []
-    flow_calibrates = []
-    flow_linearfits = []
-    file_derivative = []
-
-    pres_pattern = r'^(?P<number>\d{4,5})[.]pCal$'
-    flow_pattern = r'^(?P<number>\d{4,5})[.]fCal$'
-    lfit_pattern = r'^ZCF-301B\s+ST\d{4,5}\w{4,}-?\w{0,3}[.]xls$'
+    # regular expression patterns to match
+    pres_pattern = r'^(?P<serial_number>\d{4,5})[.]pCal$'
+    flow_pattern = r'^(?P<serial_number>\d{4,5})[.]fCal$'
+    lfit_pattern = r'^ZCF-301B\s+ST(?P<serial_number>\d{4,5})\w{4,}(?P<serial_volume>-?\w{0,3})[.]xls$'
     derv_pattern = r'ZCF-301B\s+ST\d{3,5}\(\d{4}[.]\d{2}[.]\d{2}\)-?\w{0,3}$'
 
-    for filename in os.listdir(dest):
-        if re.match(pres_pattern, filename):
-            pres_calibrates.append(filename)
-        elif re.match(flow_pattern, filename):
-            flow_calibrates.append(filename)
-        elif re.match(lfit_pattern, filename):
-            flow_linearfits.append(filename)
-        elif re.match(derv_pattern, filename):
-            file_derivative.append(filename)
-        else:
-            continue
+    # timestamp for created derivatives
+    timestamp = datetime.datetime.now().strftime('%Y.%m.%d')
+
+    if args:   # arg list given, package given list
+        platform.writer("Making Specified Packages\n")
+    else:      # no arg given at all, package all possible
+        platform.writer("Making All Packages\n")
+
+        # for filename in os.listdir(shell.config['lab']):
+        for filename in os.listdir('/home/spacer/document'):
+            if filename.endswith('.pCal'):
+                match_result = re.match(pres_pattern, filename)
+                if match_result:
+                    pres_calibrates.update({match_result.group('serial_number'): {'filename': filename}})
+            elif filename.endswith('.fCal'):
+                match_result = re.match(flow_pattern, filename)
+                if match_result:
+                    flow_calibrates.update({match_result.group('serial_number'): {'filename': filename}})
+            elif filename.endswith(".xls"):
+                match_result = re.match(lfit_pattern, filename)
+                if match_result:
+                    lfit_linearfits.update({match_result.group('serial_number'): {
+                        'filename': filename,
+                        'volume': match_result.group('serial_volume')
+                    }})
+
+        # collecting possible packages
+        for pres in pres_calibrates:
+            if pres not in file_derivative:
+                file_derivative.update({pres: {}})
+            file_derivative[pres].update({'pres_calibrate': pres_calibrates[pres]['filename']})
+            #file_derivative.update({pres: {'pres_calibrate': pres_calibrates[pres]['filename']}})
+        for flow in flow_calibrates:
+            if flow not in file_derivative:
+                file_derivative.update({flow: {}})
+            file_derivative[flow].update({'flow_calibrate': flow_calibrates[flow]['filename']})
+            #file_derivative.update({flow: {'flow_calibrate': flow_calibrates[flow]['filename']}})
+        for lfit in lfit_linearfits:
+            if lfit not in file_derivative:
+                file_derivative.update({lfit: {}})
+            #file_derivative.update({lfit: {'lfit_calibrate': lfit_linearfits[lfit]['filename'],
+            file_derivative[lfit].update({'lfit_linearfit': lfit_linearfits[lfit]['filename'],
+                                          'serial_volume': lfit_linearfits[lfit]['volume']})
+
+        for serial_number, files in file_derivative.items():
+            #if files['pres_calibrate'] and files['flow_calibrate'] and files['lfit_linearfit']:
+            if files.__contains__('pres_calibrate') and files.__contains__('flow_calibrate') and files.__contains__('lfit_linearfit'):
+                directory = 'ZCF-301B ST' + serial_number + '(' + timestamp + ')'
+                if files.__contains__('serial_volume'):
+                    directory += files['serial_volume']
+                print("Making Derivative: %s" % directory)

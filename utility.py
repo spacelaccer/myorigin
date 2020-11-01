@@ -86,3 +86,10 @@ def list_patterns(path, pattern):
         if re.match(pattern, filename):
             filenames.append(filename)
     return filenames
+
+
+def extract_parameter(shell, kwargs_dict, parameter, param_string_in_config):
+    if parameter in kwargs_dict:
+        return kwargs_dict[parameter]
+    else:
+        return shell.config[param_string_in_config]
